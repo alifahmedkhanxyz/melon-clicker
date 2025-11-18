@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Melon Clicker 🍈</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  body {margin:0;background:#27ae60;color:white;font-family:sans-serif;text-align:center;height:100vh;overflow:hidden;}
+  h1 {font-size:2.8em;margin:15px 0 5px;}
+  .timer {font-size:4em;font-weight:bold;margin:10px;color:#ff0;text-shadow:2px 2px #000;}
+  .info {font-size:1.6em;margin:15px;}
+  #area {position:relative;height:50vh;background:rgba(0,0,0,0.2);border-radius:20px;overflow:hidden;margin:20px 0;}
+  .melon, .bomb {position:absolute;font-size:70px;cursor:pointer;animation:fall 3.8s linear;user-select:none;}
+  .boom {position:absolute;font-size:130px;pointer-events:none;animation:explode 0.7s forwards;z-index:99;}
+  .pop {position:absolute;font-size:90px;pointer-events:none;animation:pop 0.6s forwards;color:#ff0;text-shadow:3px 3px #c00;}
+  @keyframes fall {from{top:-100px;transform:rotate(0deg);}to{top:100vh;transform:rotate(360deg);}}
+  @keyframes explode {0%{transform:scale(0);opacity:1;}100%{transform:scale(4);opacity:0;}}
+  @keyframes pop {0%{transform:scale(0);}60%{transform:scale(2);}100%{transform:scale(1);opacity:0;transform:translateY(-80px);}}
+  button {margin:10px;padding:15px 30px;font-size:18px;background:white;color:#27ae60;border:none;border-radius:15px;}
+  .shake {animation:shake 0.6s;}
+  @keyframes shake {0%,100%{transform:translateX(0);}10%,30%,50%,70%,90%{transform:translateX(-15px);}20%,40%,60%,80%{transform:translateX(15px);}}
+  .locked {opacity:0.5;pointer-events:none;}
+</style>
+</head>
+<body>
+<h1>🍈 Melon Clicker</h1>
+<div class="timer" id="timer">30</div>
+<div class="info">
+  Session Score: <span id="score">0</span> 🍈 | Total: <span id="total">0</span> 🍈<br>
+  Plays left today: <span id="plays">3</span>/3
+</div>
+<div id="area"></div>
+<button id="mineBtn" onclick="mine()">⛏️ Daily Mine</button>
+<button onclick="about()">ℹ️ About</button>
+
+<script>
+const tg = window.Telegram?.WebApp || {HapticFeedback:{impactOccurred(){}}, sendData(){}, close(){location.reload()}};
+tg.ready(); tg.expand();
+
+const SESSION_TIME = 30; // 30 seconds
+let timeLeft = SESSION_TIME;
+let timerInterval;
+let todayScore = 0;
+let totalScore = parseInt(localStorage.getItem('totalScore') || '0');
+let playsLeft = 3;
+
+const today = new Date().toDateString();
+if (localStorage.today !== today) {
+  localStorage.today = today;
+  localStorage.playsLeft = 3;
+  localStorage.mined = 'false';
+} else {
+  playsLeft = parseInt(localStorage.playsLeft || 3);
+}
+
+document.getElementById('total').textContent = totalScore;
+document.getElementById('plays').textContent = playsLeft;
+
+// Timer start
+function startTimer() {
+  document.getElementById('timer').textContent = timeLeft;
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    document.getElementById('timer').textContent = timeLeft;
+    if (timeLeft <= 5) document.getElementById('timer').style.color = '#f33';
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      endSession();
+    }
+  }, 1000);
+}
+
+// Sound
+function play(type) {
+  const a = new Audio();
+  a.src = type==='melon' 
+    ? 'https://cdn.jsdelivr.net/gh/Heisennberg69/melon-clicker/sounds/pop.mp3' 
+    : 'https://cdn.jsdelivr.net/gh/Heisennberg69/melon-clicker/sounds/boom.mp3';
+  a.play().catch(()=>{});
+}
+
+function spawn() {
+  if (playsLeft <= 0 || timeLeft <= 0) return;
+  const area = document.getElementById('area');
+  const el = document.createElement('div');
+  const isBomb = Math.random() < 0.17;
+  el.textContent = isBomb ? '💣' : '🍈';
+  el.className = isBomb ? 'bomb' : 'melon';
+  el.style.left = Math.random()*78 + '%';
+
+  el.onclick = (e) => {
+    const x = e.clientX || e.touches[0].clientX;
+    const y = e.clientY || e.touches[0].clientY;
+
+    if (isBomb) {
+      todayScore -= 20;
+      if (todayScore < 0) todayScore = 0;
+      play('bomb');
+      tg.HapticFeedback.impactOccurred('heavy');
+      document.body.classList.add('shake');
+      setTimeout(()=>document.body.classList.remove('shake'), 600);
+
+      const boom = document.createElement('div');
+      boom.textContent = '💥';
+      boom.className = 'boom';
+      boom.style.left = (x-65)+'px';
+      boom.style.top = (y-65)+'px';
+      document.body.appendChild(boom);
+      setTimeout(()=>boom.remove(), 700);
+    } else {
+      todayScore += 10;
+      play('melon');
+      tg.HapticFeedback.impactOccurred('light');
+
+      const pop = document.createElement('div');
+      pop.textContent = '+10';
+      pop.className = 'pop';
+      pop.style.left = (x-45)+'px';
+      pop.style.top = (y-90)+'px';
+      document.body.appendChild(pop);
+      setTimeout(()=>pop.remove(), 600);
+    }
+    document.getElementById('score').textContent = todayScore;
+    el.remove();
+  };
+  area.appendChild(el);
+  setTimeout(() => el.remove(), 3800);
+}
+setInterval(spawn, 620);
+
+// Start game
+startTimer();
+
+// End session
+function endSession() {
+  totalScore += todayScore;
+  localStorage.totalScore = totalScore;
+  playsLeft--;
+  localStorage.playsLeft = playsLeft;
+  document.getElementById('total').textContent = totalScore;
+  document.getElementById('plays').textContent = playsLeft;
+
+  tg.sendData(JSON.stringify({score: todayScore, total: totalScore}));
+
+  if (playsLeft > 0) {
+    alert(`⏰ Time's Up!\nSession: +${todayScore} 🍈\nTotal: ${totalScore} 🍈\nPlays left: ${playsLeft}`);
+    location.reload(); // next play ready
+  } else {
+    document.getElementById('area').innerHTML = '<h2 style="margin-top:120px;">🎉 All 3 plays done today!<br>Total Melons: '+totalScore+' 🍈<br>Come back tomorrow!</h2>';
+    document.getElementById('timer').textContent = 'DONE';
+    alert(`🎉 All plays finished today!\nYou earned ${todayScore} this round!\nTotal: ${totalScore} 🍈\nSee you tomorrow!`);
+    setTimeout(()=>tg.close(), 4000);
+  }
+}
+
+function mine() {
+  if (localStorage.mined === today) return alert('⛏️ Already mined today!');
+  const reward = Math.floor(Math.random()*700)+400;
+  totalScore += reward;
+  localStorage.totalScore = totalScore;
+  localStorage.mined = today;
+  document.getElementById('total').textContent = totalScore;
+  alert(`⛏️ Mined ${reward} 🍈 !\nTotal now: ${totalScore} 🍈`);
+}
+
+function about() {
+  alert("🍈 Melon Clicker Final\n\n⏰ 30 seconds per play\n🎮 3 plays/day\n💣 Bomb = -20\n🍈 Melon = +10\n⛏️ Daily Mine\n\nTimer + effects + sound = PRO feel!\n\nTelegram live version + TON wallet coming soon!");
+}
+</script>
+</body>
+</html>
