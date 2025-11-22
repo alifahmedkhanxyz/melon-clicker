@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🍈 Melon Clicker Final</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB9VtW1YpDfM9UynxFQvv9-OSRtf-U7Z_k",
+    authDomain: "redent-royal.firebaseapp.com",
+    databaseURL: "https://redent-royal-default-rtdb.firebaseio.com",
+    projectId: "redent-royal",
+    storageBucket: "redent-royal.firebasestorage.app",
+    messagingSenderId: "683092186570",
+    appId: "1:683092186570:web:aa3985c9c7f07bc38eeb33",
+    measurementId: "G-B9LLS9R4ZW"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  window.firebaseDB = db; // globally accessible
+</script>
+
+<style>
+body{margin:0;background:linear-gradient(135deg,#74b9ff,#0984e3,#00b894);color:#fff;font-family:system-ui;text-align:center;height:100vh;overflow:hidden;position:relative;}
+body.shake{animation:shake .6s}@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-16px)}75%{transform:translateX(16px)}}
+h1{font-size:3.2em;margin:20px 0;text-shadow:0 0 25px #fff}
+.timer{font-size:5em;font-weight:900;background:rgba(0,0,0,.3);padding:12px 35px;border-radius:30px;display:inline-block;text-shadow:0 0 30px #ffeb3b;}
+.info{font-size:1.8em;margin:20px;background:rgba(255,255,255,.2);padding:18px;border-radius:25px;backdrop-filter:blur(15px);}
+#area{position:relative;height:56vh;background:rgba(255,255,255,.15);border-radius:30px;overflow:hidden;margin:20px 10px;backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.3);}
+.melon,.bomb,.ice{position:absolute;cursor:pointer;user-select:none;font-size:70px;filter:drop-shadow(0 0 15px rgba(255,255,255,0.8));animation:fall linear forwards;}
+.ice{font-size:50px;filter:drop-shadow(0 0 20px rgba(135,206,255,1));}
+@keyframes fall{from{top:-110px;transform:rotate(0)scale(.7)}50%{transform:rotate(360deg)scale(1)}to{top:100vh;transform:rotate(720deg)scale(1.1)}}
+.boom{position:absolute;font-size:190px;pointer-events:none;animation:boom .9s forwards;z-index:99;}
+@keyframes boom{0%{transform:scale(0) rotate(0);opacity:1}100%{transform:scale(6.5) rotate(180deg);opacity:0}}
+.pop{font-size:55px;font-weight:bold;pointer-events:none;animation:p .7s forwards;position:absolute;z-index:100;}
+.pop-melon{color:#00ff88;text-shadow:0 0 25px #00ff88}
+.pop-bomb{color:#ff4757;text-shadow:0 0 25px #ff4757}
+@keyframes p{0%{transform:scale(0)}60%{transform:scale(1.6)translateY(-50px)}100%{transform:translateY(-160px);opacity:0}}
+button{margin:10px;padding:16px 42px;font-size:21px;background:rgba(255,255,255,0.95);color:#2d3436;border:none;border-radius:30px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,0.3);transition:all 0.3s;}
+button:hover{transform:translateY(-3px);box-shadow:0 15px 40px rgba(0,0,0,0.4);}
+.paused{animation-play-state:paused!important;filter:brightness(0.7) saturate(0.8) drop-shadow(0 0 10px rgba(135,206,255,0.8));}
+
+/* Leaderboard Styles */
+#leaderboard{margin-top:20px;background:rgba(0,0,0,0.2);padding:15px;border-radius:20px;backdrop-filter:blur(15px);}
+#topScores li{margin:5px 0;font-size:1.5em;}
+#playButton{background:#00ff88;color:#2d3436;margin-bottom:15px;}
+</style>
+</head>
+<body>
+
+<h1>🍈 Melon Clicker</h1>
+<button id="playButton">▶️ Play Game</button>
+<div class="timer" id="timer">30</div>
+<div class="info">
+  Round: <span id="score">0</span> 🍈 | Total: <span id="total">0</span> 🍈<br>
+  Plays: <span id="plays">3</span>/3
+</div>
+<div id="area" style="display:none;"></div>
+
+<div id="leaderboard">
+  <h2>🏆 Top Scores</h2>
+  <ul id="topScores"></ul>
+</div>
+
+<button onclick="mine()">⛏️ Daily Mine</button>
+<button onclick="about()">ℹ️ About</button>
+
+<script type="module">
+const tg = window.Telegram?.WebApp || {HapticFeedback:{impactOccurred(){}},sendData(){},close(){location.reload();}};
+tg.ready(); tg.expand();
+
+import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+const db = window.firebaseDB;
+
+let timeLeft = 30, score = 0, total = parseInt(localStorage.getItem('totalScore')||'0'), plays = 3;
+let isFreezing = false;
+const today = new Date().toDateString();
+if(localStorage.getItem('today') !== today){ 
+  localStorage.setItem('today',today); 
+  localStorage.setItem('playsLeft',3); 
+  localStorage.setItem('mined','no'); 
+  plays=3; 
+} else plays = parseInt(localStorage.getItem('playsLeft')||'3');
+document.getElementById('total').textContent = total;
+document.getElementById('plays').textContent = plays;
+
+// Leaderboard
+function updateLeaderboardFirebase(){
+  const scoresRef = query(ref(db,'scores'), orderByChild('score'), limitToLast(10));
+  onValue(scoresRef, snapshot=>{
+    const data = snapshot.val();
+    const list = document.getElementById('topScores');
+    list.innerHTML='';
+    if(data){
+      const arr = Object.values(data).sort((a,b)=>b.score-a.score);
+      arr.forEach(p=>{
+        const li = document.createElement('li');
+        li.textContent = `${p.name}: ${p.score}`;
+        list.appendChild(li);
+      });
+    }
+  });
+}
+updateLeaderboardFirebase();
+
+const playButton = document.getElementById('playButton');
+playButton.addEventListener('click', ()=>{
+  document.getElementById('area').style.display='block';
+  playButton.style.display='none';
+  startGame();
+});
+
+let timerInt;
+function startGame(){
+  timeLeft = 30;
+  score = 0;
+  updateScore();
+  
+  timerInt = setInterval(()=>{
+    if(timeLeft>0){
+      timeLeft--;
+      document.getElementById('timer').textContent = timeLeft;
+      if(timeLeft<=5) document.getElementById('timer').style.textShadow='0 0 30px #ff4757';
+    } else {
+      clearInterval(timerInt);
+      endSession();
+    }
+  },1000);
+}
+
+// Spawn functions
+setInterval(()=>{
+  if(timeLeft<=0 || plays<=0 || isFreezing) return;
+  const count = timeLeft>15 ? 2 : 1;
+  for(let i=0;i<count;i++){
+    const r=Math.random();
+    if(r<0.78) spawnMelon();
+    else if(r<0.94) spawnBomb();
+    else spawnIce();
+  }
+},390);
+
+function spawnMelon(){const el=document.createElement('div');el.textContent='🍈';el.className='melon';el.style.left=(Math.random()*82+8)+'%';el.style.animationDuration=(3.1+Math.random()*1.2)+'s';el.onclick=(e)=>{score+=10;tg.HapticFeedback.impactOccurred('light');popText('+10 🍈',e.clientX||e.touches[0].clientX,e.clientY||e.touches[0].clientY,false);updateScore();el.remove()};document.getElementById('area').appendChild(el);setTimeout(()=>{if(el.parentNode) el.remove();},5500);}
+function spawnBomb(){const el=document.createElement('div');el.textContent='💣';el.className='bomb';el.style.left=(Math.random()*82+8)+'%';el.style.animationDuration=(3.1+Math.random()*1.2)+'s';el.onclick=(e)=>{score=Math.max(0,score-5);tg.HapticFeedback.impactOccurred('heavy');document.body.classList.add('shake');setTimeout(()=>document.body.classList.remove('shake'),600);bigBoom(e.clientX||e.touches[0].clientX,e.clientY||e.touches[0].clientY);popText('-5',e.clientX||e.touches[0].clientX,e.clientY||e.touches[0].clientY,true);updateScore();el.remove()};document.getElementById('area').appendChild(el);setTimeout(()=>{if(el.parentNode) el.remove();},5500);}
+function spawnIce(){const el=document.createElement('div');el.textContent='❄️';el.className='ice';el.style.left=(Math.random()*84+7)+'%';el.style.animationDuration=(3.4+Math.random()*0.9)+'s';el.onclick=()=>{triggerFreeze();tg.HapticFeedback.impactOccurred('medium');el.remove()};document.getElementById('area').appendChild(el);setTimeout(()=>{if(el.parentNode) el.remove();},5500);}
+
+function triggerFreeze(){if(isFreezing)return;isFreezing=true;document.querySelectorAll('#area .melon,#area .bomb').forEach(el=>el.classList.add('paused'));setTimeout(()=>{document.querySelectorAll('#area .melon,#area .bomb').forEach(el=>el.classList.remove('paused'));isFreezing=false;},3000);}
+
+// Helpers
+function updateScore(){document.getElementById('score').textContent=score;}
+function popText(text,x,y,isBomb){const p=document.createElement('div');p.textContent=text;p.className=`pop ${isBomb?'pop-bomb':'pop-melon'}`;p.style.left=(x-35)+'px';p.style.top=(y-90)+'px';document.body.appendChild(p);setTimeout(()=>p.remove(),700);}
+function bigBoom(x,y){const b=document.createElement('div');b.textContent='💥';b.className='boom';b.style.left=(x-95)+'px';b.style.top=(y-95)+'px';document.body.appendChild(b);setTimeout(()=>b.remove(),900);}
+
+// End session & save score to Firebase with Telegram username
+function endSession(){
+  total += score;
+  localStorage.setItem('totalScore',total);
+  plays--;
+  localStorage.setItem('playsLeft',plays);
+  document.getElementById('total').textContent = total;
+  document.getElementById('plays').textContent = plays;
+  tg.sendData(JSON.stringify({score:score,total:total}));
+
+  // Telegram username or ID
+  const userName = (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.username)
+                   ? tg.initDataUnsafe.user.username
+                   : `User-${tg.initDataUnsafe.user.id}`;
+
+  // Firebase save
+  const scoresRef = ref(db,'scores');
+  push(scoresRef,{
+    name: userName,
+    score: score,
+    timestamp: Date.now()
+  });
+
+  if(plays>0){
+    alert(`⏰ Time Up!\nRound: +${score} 🍈\nTotal: ${total} 🍈\nPlays left: ${plays}`);
+    location.reload();
+  } else {
+    document.getElementById('area').innerHTML=`<h2 style="margin-top:140px;font-size:2em;">🎉 All 3 plays done!<br>Total: ${total} 🍈<br>Come back tomorrow!</h2>`;
+    document.getElementById('timer').textContent='DONE';
+    alert(`🎉 All done!\nLast round: ${score} 🍈\nTotal: ${total} 🍈\nTomorrow again!`);
+    setTimeout(()=>tg.close(),5000);
+  }
+}
+
+function mine(){if(localStorage.getItem('mined')===today) return alert('⛏️ Already mined today!');const reward=Math.floor(Math.random()*600)+300;total+=reward;localStorage.setItem('totalScore',total);localStorage.setItem('mined',today);document.getElementById('total').textContent=total;alert(`⛏️ Mined +${reward} 🍈!\nTotal now: ${total} 🍈`);}
+function about(){alert("🍈 Melon Clicker PRO\n\n💣 Boom click = -5\n🍈 Melon click = +10\n❄️ Ice click = 3s FREEZE (only fruits pause)\n\n~300 fruits/30s | 3 plays/day\nZero lag + full effects!");}
+
+</script>
+</body>
+</html>
