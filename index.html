@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🍈 Melon Clicker PRO - Telegram Mini Game</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<script type="module">
+// import মডিউল পরিবর্তন: push এর বদলে set যুক্ত করা হয়েছে
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB9VtW1YpDfM9UynxFQvv9-OSRtf-U7Z_k",
+  authDomain: "redent-royal.firebaseapp.com",
+  databaseURL: "https://redent-royal-default-rtdb.firebaseio.com",
+  projectId: "redent-royal",
+  storageBucket: "redent-royal.firebasestorage.app",
+  messagingSenderId: "683092186570",
+  appId: "1:683092186570:web:aa3985c9c7f07bc38eeb33",
+  measurementId: "G-B9LLS9R4ZW"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+window.firebaseDB = db;
+</script>
+
+<style>
+/* CSS কোড অপরিবর্তিত আছে */
+body{margin:0;background:linear-gradient(135deg,#74b9ff,#0984e3,#00b894);color:#fff;font-family:system-ui;text-align:center;height:100vh;overflow:hidden;position:relative;}
+body.shake{animation:shake .4s}@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+h1{font-size:3em;margin:20px 0;text-shadow:0 0 20px #fff}
+.timer{font-size:4em;font-weight:900;background:rgba(0,0,0,.3);padding:10px 30px;border-radius:25px;display:inline-block;text-shadow:0 0 20px #ffeb3b;}
+.info{font-size:1.5em;margin:15px;background:rgba(255,255,255,.2);padding:15px;border-radius:20px;backdrop-filter:blur(10px);}
+#area{position:relative;height:55vh;background:rgba(255,255,255,.15);border-radius:25px;overflow:hidden;margin:15px 10px;backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,.3);}
+.melon,.bomb,.ice{position:absolute;cursor:pointer;user-select:none;font-size:60px;filter:drop-shadow(0 0 8px rgba(255,255,255,0.8));animation:fall linear forwards;}
+.ice{font-size:45px;filter:drop-shadow(0 0 10px rgba(135,206,255,1));}
+@keyframes fall{from{top:-100px;transform:rotate(0)scale(.7)}50%{transform:rotate(360deg)scale(1)}to{top:100vh;transform:rotate(720deg)scale(1.05)}}
+.boom{position:absolute;font-size:150px;pointer-events:none;animation:boom .7s forwards;z-index:99;}
+@keyframes boom{0%{transform:scale(0) rotate(0);opacity:1}100%{transform:scale(5) rotate(180deg);opacity:0}}
+.pop{font-size:45px;font-weight:bold;pointer-events:none;animation:p .6s forwards;position:absolute;z-index:100;}
+.pop-melon{color:#00ff88;text-shadow:0 0 20px #00ff88}
+.pop-bomb{color:#ff4757;text-shadow:0 0 20px #ff4757}
+@keyframes p{0%{transform:scale(0)}60%{transform:scale(1.5)translateY(-40px)}100%{transform:translateY(-120px);opacity:0}}
+button{margin:10px;padding:14px 36px;font-size:19px;background:rgba(255,255,255,0.95);color:#2d3436;border:none;border-radius:25px;font-weight:600;box-shadow:0 8px 25px rgba(0,0,0,0.3);transition:all 0.3s;}
+button:hover{transform:translateY(-2px);box-shadow:0 12px 35px rgba(0,0,0,0.4);}
+.paused{animation-play-state:paused!important;filter:brightness(0.8) saturate(0.9);}
+#leaderboard{margin-top:15px;background:rgba(0,0,0,0.2);padding:12px;border-radius:18px;backdrop-filter:blur(10px);}
+#topScores li{margin:4px 0;font-size:1.3em;}
+#playButton{background:#00ff88;color:#2d3436;margin-bottom:12px;}
+</style>
+</head>
+<body>
+
+<h1>🍈 Melon Clicker</h1>
+<button id="playButton">▶️ Play Game</button>
+<div class="timer" id="timer">30</div>
+<div class="info">
+  Points: <span id="score">0</span> 🍈 | Total: <span id="total">0</span> 🍈<br>
+  Plays: <span id="plays">3</span>/3
+</div>
+<div id="area" style="display:none;"></div>
+
+<div id="leaderboard">
+  <h2>🏆 Top Scores</h2>
+  <ul id="topScores"></ul>
+</div>
+
+<button onclick="mine()">⛏️ Daily Mine</button>
+<button onclick="about()">ℹ️ About</button>
+
+<script type="module">
+// import মডিউল পরিবর্তন: push এর বদলে set যুক্ত করা হয়েছে
+const tg = window.Telegram?.WebApp || {HapticFeedback:{impactOccurred(){}},sendData(){},close(){location.reload();}};
+tg.ready(); tg.expand();
+
+import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+const db = window.firebaseDB;
+
+// Game variables
+let timeLeft=30, score=0, total=parseInt(localStorage.getItem('totalScore')||'0'), plays=3;
+let isFreezing=false, timerInt;
+const today = new Date().toDateString();
+if(localStorage.getItem('today')!==today){ 
+  localStorage.setItem('today',today); 
+  localStorage.setItem('playsLeft',3); 
+  localStorage.setItem('mined','no'); 
+  plays=3; 
+} else plays = parseInt(localStorage.getItem('playsLeft')||'3');
+document.getElementById('total').textContent=total;
+document.getElementById('plays').textContent=plays;
+
+// Leaderboard (সংশোধিত)
+function updateLeaderboardFirebase(){
+  // 'leaderboard' পাথে 'totalScore' অনুযায়ী অর্ডার করুন
+  const scoresRef = query(ref(db,'leaderboard'), orderByChild('totalScore'), limitToLast(100)); 
+    
+  onValue(scoresRef, snapshot=>{
+    const data = snapshot.val();
+    const list = document.getElementById('topScores');
+    list.innerHTML='';
+    if(data){
+      // ডেটাটিকে উল্টো দিকে সাজানো হচ্ছে কারণ orderByChild() ছোট থেকে বড় করে সাজায়
+      const arr = Object.values(data).sort((a,b)=>b.totalScore-a.totalScore); 
+      
+      arr.forEach((p, index)=>{
+        const li=document.createElement('li');
+        // র‍্যাঙ্ক এবং totalScore দেখাচ্ছে
+        li.textContent=`${index+1}. ${p.name}: ${p.totalScore} 🍈`;
+        list.appendChild(li);
+      });
+    }
+  });
+}
+updateLeaderboardFirebase();
+
+// Play Button (Plays 0 থাকলে খেলা শুরু হওয়া আটকানো হয়েছে)
+document.getElementById('playButton').addEventListener('click', ()=>{
+    if (plays <= 0) {
+        alert("❌ No plays left today! Please come back tomorrow.");
+        return;
+    }
+    
+    document.getElementById('area').style.display='block';
+    document.getElementById('playButton').style.display='none';
+    startGame();
+});
+
+function startGame(){
+  timeLeft=30; score=0; updateScore();
+  timerInt=setInterval(()=>{
+    if(timeLeft>0){timeLeft--; document.getElementById('timer').textContent=timeLeft; if(timeLeft<=5) document.getElementById('timer').style.textShadow='0 0 20px #ff4757';}
+    else{clearInterval(timerInt); endSession();}
+  },1000);
+}
+
+// Spawn objects
+let activeObjects=[];
+function spawnObject(type){
+  if(activeObjects.length>=6) return;
+  const el=document.createElement('div');
+  el.textContent=type==='melon'?'🍈':type==='bomb'?'💣':'❄️';
+  el.className=type==='melon'?'melon':type==='bomb'?'bomb':'ice';
+  el.style.left=(Math.random()*82+8)+'%';
+  el.style.animationDuration=(3+Math.random()*1.2)+'s';
+  el.onclick=(e)=>{
+    const x=e.clientX||e.touches[0].clientX;
+    const y=e.clientY||e.touches[0].clientY;
+    if(type==='melon'){score+=10; tg.HapticFeedback.impactOccurred('light'); popText('+10 🍈',x,y,false);}
+    else if(type==='bomb'){score=Math.max(0,score-5); tg.HapticFeedback.impactOccurred('heavy'); document.body.classList.add('shake'); setTimeout(()=>document.body.classList.remove('shake'),400); bigBoom(x,y); popText('-5',x,y,true);}
+    else {triggerFreeze(); tg.HapticFeedback.impactOccurred('medium');}
+    updateScore(); el.remove(); activeObjects=activeObjects.filter(o=>o!==el);
+  };
+  document.getElementById('area').appendChild(el);
+  activeObjects.push(el);
+  setTimeout(()=>{ el.remove(); activeObjects=activeObjects.filter(o=>o!==el);},5500);
+}
+
+setInterval(()=>{
+  if(timeLeft<=0||plays<=0||isFreezing) return;
+  const count = timeLeft>15?2:1;
+  for(let i=0;i<count;i++){
+    const r=Math.random();
+    if(r<0.78) spawnObject('melon');
+    else if(r<0.94) spawnObject('bomb');
+    else spawnObject('ice');
+  }
+},400);
+
+// Freeze
+function triggerFreeze(){
+  if(isFreezing) return;
+  isFreezing=true;
+  activeObjects.forEach(el=>{ if(el.classList.contains('melon')||el.classList.contains('bomb')) el.classList.add('paused');});
+  clearInterval(timerInt);
+  setTimeout(()=>{
+    activeObjects.forEach(el=>{if(el.classList.contains('melon')||el.classList.contains('bomb')) el.classList.remove('paused');});
+    isFreezing=false;
+    timerInt=setInterval(()=>{
+      if(timeLeft>0){timeLeft--; document.getElementById('timer').textContent=timeLeft; if(timeLeft<=5) document.getElementById('timer').style.textShadow='0 0 20px #ff4757';}
+      else{clearInterval(timerInt); endSession();}
+    },1000);
+  },2000);
+}
+
+// Helpers
+function updateScore(){document.getElementById('score').textContent=score;}
+function popText(text,x,y,isBomb){const p=document.createElement('div');p.textContent=text;p.className=`pop ${isBomb?'pop-bomb':'pop-melon'}`;p.style.left=(x-30)+'px';p.style.top=(y-70)+'px';document.body.appendChild(p);setTimeout(()=>p.remove(),600);}
+function bigBoom(x,y){const b=document.createElement('div');b.textContent='💥';b.className='boom';b.style.left=(x-75)+'px';b.style.top=(y-75)+'px';document.body.appendChild(b);setTimeout(()=>b.remove(),700);}
+
+// End session (সংশোধিত: Total Score সেভ করা হচ্ছে)
+function endSession(){
+  total+=score; localStorage.setItem('totalScore',total);
+  plays--; localStorage.setItem('playsLeft',plays);
+  document.getElementById('total').textContent=total; document.getElementById('plays').textContent=plays;
+  tg.sendData(JSON.stringify({score,total}));
+  
+  // Total Score সেভ করার নতুন লজিক:
+  const userId = (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) ? tg.initDataUnsafe.user.id : 'AnonUser';
+  const userName = (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.username) ? tg.initDataUnsafe.user.username : `User-${userId}`;
+  
+  const userRef = ref(db, `leaderboard/${userId}`);
+  
+  set(userRef, {
+    name: userName,
+    totalScore: total, // <--- এখানে 'total' স্কোর ব্যবহার করা হচ্ছে
+    timestamp: Date.now()
+  });
+  // পূর্বের push(ref(db,'scores'),...) ফাংশনটি বাদ দেওয়া হয়েছে।
+
+  if(plays>0){alert(`⏰ Time Up!\nRound: +${score} 🍈\nTotal: ${total} 🍈\nPlays left: ${plays}`); location.reload();}
+  else{document.getElementById('area').innerHTML=`<h2 style="margin-top:140px;font-size:2em;">🎉 All 3 plays done!<br>Total: ${total} 🍈<br>Come back tomorrow!</h2>`; document.getElementById('timer').textContent='DONE'; alert(`🎉 All done!\nLast round: ${score} 🍈\nTotal: ${total} 🍈\nTomorrow again!`); setTimeout(()=>tg.close(),5000);}
+}
+
+// Daily Mine
+function mine(){if(localStorage.getItem('mined')===today) return alert('⛏️ Already mined today!');
+const reward=Math.floor(Math.random()*600)+300; total+=reward; localStorage.setItem('totalScore',total); localStorage.setItem('mined',today);
+document.getElementById('total').textContent=total; alert(`⛏️ Mined +${reward} 🍈!\nTotal now: ${total} 🍈`);}
+
+// About
+function about(){alert("🍈 Melon Clicker PRO\n💣 Boom click = -5\n🍈 Melon click = +10\n❄️ Ice click = 2s FREEZE\n~300 fruits/30s | 3 plays/day\nTelegram Mini Game Ready!");}
+
+</script>
+</body>
+</html>
