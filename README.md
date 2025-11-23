@@ -1,2 +1,2 @@
 # melon-clicker
-Melon Clicker Telegram Web App
+RODENT ROYALE Telegram Web App
