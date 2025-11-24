@@ -63,6 +63,19 @@ button:hover{transform:translateY(-2px);box-shadow:0 12px 35px rgba(0,0,0,0.4);}
 </div>
 <div id="area" style="display:none;"></div>
 
+<!-- TON Wallet Connect Section -->
+<div style="text-align:center; margin:30px 0; padding:20px; background:rgba(0,0,0,0.3); border-radius:15px;">
+  <h2 style="color:#00ff9d; margin-bottom:15px;">Wallet & Rewards</h2>
+  
+  <button id="connectBtn" style="padding:16px 32px; font-size:18px; background:#0088cc; color:white; border:none; border-radius:12px; cursor:pointer; font-weight:bold;">
+    Connect TON Wallet
+  </button>
+  
+  <div id="status" style="margin:15px; color:#ff6b6b; font-weight:bold; font-size:17px;">
+    Wallet not connected
+  </div>
+</div>
+
 <div id="leaderboard">
   <h2>🏆 Top Scores</h2>
   <ul id="topScores"></ul>
@@ -222,7 +235,46 @@ document.getElementById('total').textContent=total; alert(`⛏️ Mined +${rewar
 // About
 function about(){alert("🍈 Melon Clicker PRO\n💣 Boom click = -5\n🍈 Melon click = +10\n❄️ Ice click = 2s FREEZE\n~300 fruits/30s | 3 plays/day\nTelegram Mini Game Ready!");}
 
+<script type="module">
+  // Telegram WebApp ready
+  Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
+
+  // TON Connect UI (এই লাইনটা ঠিক রাখো)
+  import { TonConnectUI } from 'https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js?module';
+
+  const tonConnectUI = new TonConnectUI({
+    manifestUrl: 'https://raw.githubusercontent.com/alifahmedkhanxyz/melon-clicker/main/tonconnect-manifest.json'
+  });
+
+  // বাটন আর স্ট্যাটাস ধরা
+  const connectBtn = document.getElementById('connectBtn');
+  const statusDiv = document.getElementById('status');
+
+  // স্ট্যাটাস আপডেট
+  async function updateStatus() {
+    if (await tonConnectUI.connected) {
+      const addr = tonConnectUI.account.address;
+      const short = addr.slice(0, 6) + "..." + addr.slice(-4);
+      statusDiv.innerHTML = `Connected: <span style="color:#00ff9d;">${short}</span>`;
+      connectBtn.style.display = "none";
+    } else {
+      statusDiv.innerHTML = "Wallet not connected";
+      connectBtn.style.display = "block";
+    }
+  }
+
+  // কানেক্ট বাটন ক্লিক
+  connectBtn.onclick = () => tonConnectUI.openModal();
+
+  // প্রথমে চেক + পরিবর্তন হলে আপডেট
+  updateStatus();
+  tonConnectUI.onStatusChange(updateStatus);
+</script>
+
+
 </script>
 </body>
 
 </html>
+
