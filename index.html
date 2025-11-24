@@ -235,23 +235,21 @@ document.getElementById('total').textContent=total; alert(`⛏️ Mined +${rewar
 // About
 function about(){alert("🍈 Melon Clicker PRO\n💣 Boom click = -5\n🍈 Melon click = +10\n❄️ Ice click = 2s FREEZE\n~300 fruits/30s | 3 plays/day\nTelegram Mini Game Ready!");}
 
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script type="module">
-  // Telegram WebApp ready
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
 
-  // TON Connect UI (এই লাইনটা ঠিক রাখো)
-  import { TonConnectUI } from 'https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js?module';
+  // এই নতুন ভার্সন ১০০% GitHub Pages-এ কাজ করে (2025-এর লেটেস্ট)
+  import { TonConnectUI } from "https://cdn.jsdelivr.net/npm/@tonconnect/ui@2.0.7/dist/tonconnect-ui.min.js";
 
   const tonConnectUI = new TonConnectUI({
-    manifestUrl: 'https://raw.githubusercontent.com/alifahmedkhanxyz/melon-clicker/main/tonconnect-manifest.json'
+    manifestUrl: "https://raw.githubusercontent.com/alifahmedkhanxyz/melon-clicker/main/tonconnect-manifest.json"
   });
 
-  // বাটন আর স্ট্যাটাস ধরা
-  const connectBtn = document.getElementById('connectBtn');
-  const statusDiv = document.getElementById('status');
+  const connectBtn = document.getElementById("connectBtn");
+  const statusDiv = document.getElementById("status");
 
-  // স্ট্যাটাস আপডেট
   async function updateStatus() {
     if (await tonConnectUI.connected) {
       const addr = tonConnectUI.account.address;
@@ -264,17 +262,13 @@ function about(){alert("🍈 Melon Clicker PRO\n💣 Boom click = -5\n🍈 Melon
     }
   }
 
-  // কানেক্ট বাটন ক্লিক
   connectBtn.onclick = () => tonConnectUI.openModal();
-
-  // প্রথমে চেক + পরিবর্তন হলে আপডেট
-  updateStatus();
   tonConnectUI.onStatusChange(updateStatus);
+  updateStatus();
 </script>
-
-
-</script>
+  
 </body>
 
 </html>
+
 
