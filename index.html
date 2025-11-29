@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Rodent Royal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#0984e3',
+              accent: '#00b894',
+              danger: '#ff4757',
+            },
+            animation: {
+              'shake': 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both',
+              'pop': 'pop 0.6s forwards',
+            },
+            keyframes: {
+              shake: {
+                '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
+                '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
+                '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
+                '40%, 60%': { transform: 'translate3d(4px, 0, 0)' }
+              },
+              pop: {
+                '0%': { transform: 'scale(0)', opacity: '0' },
+                '50%': { transform: 'scale(1.5) translateY(-20px)', opacity: '1' },
+                '100%': { transform: 'translateY(-60px)', opacity: '0' }
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        background: linear-gradient(135deg, #74b9ff, #0984e3, #00b894);
+      }
+      
+      @keyframes fall {
+        from { top: -100px; transform: rotate(0deg) scale(0.7); }
+        50% { transform: rotate(360deg) scale(1); }
+        to { top: 110vh; transform: rotate(720deg) scale(1.05); }
+      }
+
+      .paused {
+        animation-play-state: paused !important;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.24",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@tonconnect/ui-react": "https://aistudiocdn.com/@tonconnect/ui-react@^2.3.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
